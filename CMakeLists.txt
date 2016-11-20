@@ -28,6 +28,19 @@ cmake_minimum_required(VERSION 3.2)
 
 project(VulkanHppGenerator)
 
+get_filename_component(PROJECT_HOME "${CMAKE_SOURCE_DIR}"   ABSOLUTE)
+get_filename_component(CMAKE_DIR    "${PROJECT_HOME}/cmake" ABSOLUTE)
+get_filename_component(SRC_DIR      "${PROJECT_HOME}/src"   ABSOLUTE)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_DIR})
+
+file(GLOB_RECURSE header_files "${SRC_DIR}/*.h")
+file(GLOB_RECURSE source_files "${SRC_DIR}/*.cpp")
+list(APPEND executable_sources "${SRC_DIR}/VulkanHppGenerator.cpp")
+
+set(source_files_no_main ${executable_sources})
+list(REMOVE_ITEM source_files_no_main "${main_source}")
+
 file(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Docs/src/spec/vk.xml vk_spec)
 string(REPLACE "\\" "\\\\" vk_spec ${vk_spec})
 add_definitions(-DVK_SPEC="${vk_spec}")
@@ -36,34 +49,27 @@ file(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/vulkan.hpp vulkan_hpp)
 string(REPLACE "\\" "\\\\" vulkan_hpp ${vulkan_hpp})
 add_definitions(-DVULKAN_HPP="${vulkan_hpp}")
 
-set(HEADERS
-)
+find_package(TinyXML2 REQUIRED)
 
-set(SOURCES
-  VulkanHppGenerator.cpp
-)
+set(LOCAL_INCLUDE_DIRS ${SRC_DIR})
+set(SYSTEM_INCLUDE_DIRS ${TinyXML2_INCLUDE_DIR})
+set(SYSTEM_LIBRARIES ${TinyXML2_LIBRARIES})
 
-set(TINYXML2_SOURCES
-  tinyxml2/tinyxml2.cpp
-)
 
-set(TINYXML2_HEADERS
-  tinyxml2/tinyxml2.h
-)
+# compile and link static library (all code excluding mains)
+if (source_files_no_main)
+    set(CORE_LIB "core")
+    add_library(${CORE_LIB} STATIC ${source_files_no_main} ${header_files})
+    target_include_directories(${CORE_LIB}        PRIVATE ${LOCAL_INCLUDE_DIRS})
+    target_include_directories(${CORE_LIB} SYSTEM PRIVATE ${SYSTEM_INCLUDE_DIRS}) 
+    target_link_libraries(${CORE_LIB} PRIVATE ${SYSTEM_LIBRARIES})
+    set_property(TARGET ${CORE_LIB} PROPERTY CXX_STANDARD 11)
+endif()
 
-source_group(headers FILES ${HEADERS})
-source_group(sources FILES ${SOURCES})
-
-source_group(TinyXML2\\headers FILES ${TINYXML2_HEADERS})
-source_group(TinyXML2\\sources FILES ${TINYXML2_SOURCES})
-
-add_executable(VulkanHppGenerator
-  ${HEADERS}
-  ${SOURCES}
-  ${TINYXML2_SOURCES}
-  ${TINYXML2_HEADERS}
-)
-
-set_property(TARGET VulkanHppGenerator PROPERTY CXX_STANDARD 11)
-
-target_include_directories(VulkanHppGenerator PRIVATE "${CMAKE_SOURCE_DIR}/tinyxml2")
+# executables
+foreach(main_source ${executable_sources})
+    get_filename_component(exec_name ${main_source} NAME_WE)
+    add_executable(${exec_name} ${main_source})
+    set_property(TARGET ${exec_name} PROPERTY CXX_STANDARD 11)
+    target_link_libraries(${exec_name} ${SYSTEM_LIBRARIES} ${CORE_LIB})
+endforeach()
