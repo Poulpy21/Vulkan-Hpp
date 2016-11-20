@@ -38,8 +38,8 @@ file(GLOB_RECURSE header_files "${SRC_DIR}/*.h")
 file(GLOB_RECURSE source_files "${SRC_DIR}/*.cpp")
 list(APPEND executable_sources "${SRC_DIR}/VulkanHppGenerator.cpp")
 
-set(source_files_no_main ${executable_sources})
-list(REMOVE_ITEM source_files_no_main "${main_source}")
+set(source_files_no_main ${source_files})
+list(REMOVE_ITEM source_files_no_main "${executable_sources}")
 
 file(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Docs/src/spec/vk.xml vk_spec)
 string(REPLACE "\\" "\\\\" vk_spec ${vk_spec})
